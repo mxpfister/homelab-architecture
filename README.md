@@ -66,7 +66,7 @@ sequenceDiagram
     rect rgb(39, 174, 96)
         Note over PVE, GDrive: ABLAUF 1: Proxmox Rclone Backup (04:00 Uhr)
         Note over PVE: Lokale System-Crontab<br>löst Backup aus
-        PVE->>GDrive: 1a. rclone sync von externer SSD (--delete-before)
+        PVE->>GDrive: 1a. rclone sync von externer SSD
         activate PVE
         GDrive-->>PVE: 1b. Sync erfolgreich beendet
         PVE->>Influx: 1c. cron-monitor.sh sendet duration & exit_code via curl
@@ -281,7 +281,7 @@ graph LR
     end
 
     %% Heartbeat Tunnel
-    Uptime_WUE <-->|🔒 HTTPS / WAN Heartbeat| Uptime_LEI
+    Uptime_WUE <-->|🔒 HTTPS Heartbeat| Uptime_LEI
 
     %% Notiz im Diagramm
     %% Überwachung erfolgt gegenseitig. Keine geteilten Datenbanken oder Datenströme.
