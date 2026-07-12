@@ -106,6 +106,60 @@ sequenceDiagram
 
 ⚠️ Wichtiger Hinweis zum Linux-Pipe-Buffer: > Bei Aufrufen über die Home Assistant SSH-Schnittstelle müssen textintensive Skripte zwingend mittels > /dev/null 2>&1 umgeleitet werden. Andernfalls läuft der 64 KB große OS-Pipe-Buffer voll, was zu einem Deadlock (Einfrieren) des Skripts führt.
 
+## 🏠 3. Home Assistant
+```mermaid
+    graph TD
+        classDef core fill:#03a9f4,stroke:#0288d1,stroke-width:2px,color:#fff;
+        classDef hw fill:#e67e22,stroke:#d35400,stroke-width:2px,color:#fff;
+        classDef net fill:#2980b9,stroke:#1c5980,stroke-width:2px,color:#fff;
+        classDef cloud fill:#8e44ad,stroke:#2c3e50,stroke-dasharray: 5 5,color:#fff;
+        classDef area fill:#27ae60,stroke:#1e7e45,stroke-width:2px,color:#fff;
+        classDef broker fill:#34495e,stroke:#2c3e50,stroke-width:2px,color:#fff;
+
+        HA["🔹 Home Assistant OS"]:::core
+
+        subgraph Areas ["🏠 Wohnbereiche (Areas)"]
+            direction LR
+            Bad["🚿 Bad"]:::area
+            Flur["🚪 Flur"]:::area
+            Kueche["🍳 Küche"]:::area
+            Schlafzimmer["🛏️ Schlafzimmer"]:::area
+            Wohnzimmer["🛋️ Wohnzimmer"]:::area
+            HomelabArea["⚙️ Homelab"]:::area
+        end
+
+        subgraph IoT ["📻 IoT Gateways & Broker"]
+            MQTT["Mosquitto Broker<br>(MQTT Integration)"]:::broker
+            SLZB["🐝 SLZB-06 Coordinator<br>(Zigbee über LAN via SMLight)"]:::hw
+            OEP["🏷️ OpenEPaperLink AP<br>(E-Ink Displays, z.B. Kühlschrank)"]:::hw
+        end
+
+        subgraph LocalNet ["🖥️ Lokale Dienste (LAN)"]
+            Fritz["📡 FRITZ!Box 6670 Cable<br>(Netzwerk & Internet)"]:::net
+            PVE["💻 Proxmox VE Node<br>(Monitoring)"]:::net
+            LXC_Docker["📦 LXC & Docker Dienste<br>(Plex, Pi-hole v6, InfluxDB, Portainer)"]:::net
+            ATV["📺 Apple TVs<br>(Schlafzimmer, Wohnzimmer)"]:::net
+            Appliance["🧺 Haushaltsgeräte<br>(Waschmaschine, Spülmaschine)"]:::net
+        end
+
+        subgraph Cloud ["☁️ Cloud & Externe Dienste"]
+            G_AI["🤖 Google Generative AI<br>(Assistenz & Conversation)"]:::cloud
+            G_Drive["☁️ Google Drive<br>(Home Assistant Backups)"]:::cloud
+            Mobile["📱 Companion Apps<br>(iPhones, iPads, MacBook Air)"]:::cloud
+            Ext["🌱 Externe APIs<br>(OpenPlantBook, Wetter, DWD)"]:::cloud
+        end
+
+        %% Verbindungen
+        HA --- Areas
+        
+        SLZB -->|Zigbee Events| MQTT
+        MQTT <-->|MQTT| HA
+        OEP <-->|WLAN / REST| HA
+        
+        HA <-->|API / Integration| LocalNet
+        HA <-->|API / Webhooks| Cloud
+```
+
 # Homelab (Standort Leinach)
 ## 🏗️ 1. System- & Container-Architektur
 
@@ -150,7 +204,68 @@ graph TB
 
 1. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
 
-## 📡 3. Cross-Site Monitoring
+## 🏠 3. Home Assistant
+```mermaid
+    graph TD
+        classDef core fill:#03a9f4,stroke:#0288d1,stroke-width:2px,color:#fff;
+        classDef hw fill:#e67e22,stroke:#d35400,stroke-width:2px,color:#fff;
+        classDef net fill:#2980b9,stroke:#1c5980,stroke-width:2px,color:#fff;
+        classDef cloud fill:#8e44ad,stroke:#2c3e50,stroke-dasharray: 5 5,color:#fff;
+        classDef area fill:#27ae60,stroke:#1e7e45,stroke-width:2px,color:#fff;
+    
+        HA["🔹 Home Assistant OS"]:::core
+    
+        subgraph Floors ["🏠 Etagen & Wohnbereiche"]
+            direction TB
+            subgraph F_1 ["1. Stock"]
+                Bad["🚿 Bad"]:::area
+                MaxZimmer["👤 Max Zimmer"]:::area
+                Sonstiges["🌡️ Sonstiges"]:::area
+            end
+            subgraph F_0 ["Erdgeschoss"]
+                Flur["🚪 Flur"]:::area
+                Kueche["🍳 Küche"]:::area
+                Wohnzimmer["🛋️ Wohnzimmer"]:::area
+            end
+            subgraph F_K ["Keller"]
+                KellerArea["🚪 Eingänge"]:::area
+            end
+            subgraph F_Out ["Außen & Sonstiges"]
+                Garten["🌳 Garten"]:::area
+                HomelabArea["⚙️ Homelab"]:::area
+            end
+        end
+
+        subgraph IoT ["📻 IoT Gateways & Dongles"]
+            SkyConnect["📡 HA SkyConnect<br>(OpenThread Border Router)"]:::hw
+            TP_Link["🔌 TP-Link Kasa<br>(WLAN Steckdosen)"]:::hw
+            Tuya["☁️ Tuya Integration"]:::hw
+        end
+
+        subgraph LocalNet ["🖥️ Lokale Dienste & Geräte (LAN)"]
+            Fritz["📡 FRITZ!Box 7490<br>(Netzwerk & Internet)"]:::net
+            PVE["💻 Proxmox VE Node"]:::net
+            PS5["🎮 PlayStation 5<br>(Network Integration)"]:::net
+        end
+
+        subgraph Cloud ["☁️ Cloud & Externe Dienste"]
+            G_AI["🤖 Google Generative AI<br>(Assistenz & Conversation)"]:::cloud
+            G_Drive["☁️ Google Drive<br>(Home Assistant Backups)"]:::cloud
+            Mobile["📱 Companion Apps<br>(Smartphone, iPad, Mac)"]:::cloud
+        end
+
+        %% Verbindungen
+        HA --- Floors
+        
+        SkyConnect <-->|Thread / Zigbee| HA
+        TP_Link <-->|WLAN| HA
+        Tuya <-->|Cloud API| HA
+        
+        HA <-->|API| LocalNet
+        HA <-->|API / Webhooks| Cloud
+```
+
+# 📡 Cross-Site Monitoring
 ```mermaid
 graph LR
     %% Styling
