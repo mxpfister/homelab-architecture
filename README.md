@@ -12,7 +12,7 @@ graph TB
     classDef storageStyle fill:#7f8c8d,stroke:#34495e,stroke-width:2px,color:#fff;
     classDef extStyle fill:#8e44ad,stroke:#2c3e50,stroke-dasharray: 5 5,color:#fff;
 
-    subgraph PVE ["💻 Proxmox Node (pve)"]
+    subgraph PVE ["💻 Proxmox Node (pve) [Bluechip BusinessLine NUC8BEK CPU i5-8259U RAM 16GB SSD 256GB]"]
         
         subgraph Storage ["💾 Speicher-Infrastruktur"]
             SSD["🟪 Externe SSD (256GB)<br>Pfad: /mnt/pve/ext-storage/dump"]:::storageStyle
@@ -173,7 +173,7 @@ graph TB
     classDef storageStyle fill:#7f8c8d,stroke:#34495e,stroke-width:2px,color:#fff;
     classDef extStyle fill:#8e44ad,stroke:#2c3e50,stroke-dasharray: 5 5,color:#fff;
 
-    subgraph PVE_LEI ["💻 Proxmox Node (Leinach)"]
+    subgraph PVE_LEI ["💻 Proxmox Node (pve) [Lenovo ThinkCentre M720q Mini PC Pentium Gold 5400T 8GB RAM 256GB SSD]"]
         
         subgraph Storage_LEI ["💾 Speicher-Infrastruktur"]
             HDD_LEI["🟪 Externe HDD (500GB)<br>Pfad: /mnt/pve/external-storage"]:::storageStyle
@@ -193,7 +193,7 @@ graph TB
     end
 
     %% Externe Verbindungen
-    GDrive_LEI["☁️ Cloud Backup (Remote)"]:::extStyle
+    GDrive_LEI["☁️ Google Drive (Remote)"]:::extStyle
     
     %% Datenpfade
     HDD_LEI -->|rclone sync| GDrive_LEI
