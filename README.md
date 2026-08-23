@@ -39,58 +39,86 @@ graph TB
     end
 
     %% Externe Verbindungen
-    GDrive["☁️ Google Drive (Proxmox_Wue_Backups)"]:::extStyle
+    GDrivePVE["☁️ Google Drive (Proxmox_Wue_Backups)"]:::extStyle
+    GDrivePL["☁️ Google Drive (Paperless_Backup)"]:::extStyle
     
     %% Datenpfade
-    SSD -->|rclone sync| GDrive
+    VMs -->|03:00 vzdump| SSD
+    LXCs -->|03:00 vzdump| SSD
+    SSD -->|04:00 rclone sync| GDrivePVE
+    Paperless -->|02:00 rclone sync| GDrivePL
     
     class PVE pveNode;
 ```
 
 ## 🕓 2. Cronjobs
 
-1. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
-2. 05:15 Uhr: Plex Leere Ordner löschen (Plex-LXC) $\rightarrow$ Entfernt verwaiste Verzeichnisse.
-3. 05:30 Uhr: Plex Smart Cleanup (Plex-LXC) $\rightarrow$ Löscht gesehene YouTube-Videos nach einer Frist von 5 Tagen.
+1. 02:00 Uhr: Paperless Document Export & Cloud-Sync (Paperless-LXC) $\rightarrow$ Erstellt einen konsistenten Dokumenten-/Datenbankexport und synchronisiert ihn via Rclone zu Google Drive
+2. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Sichert alle VMs und LXC-Container als Backup-Dump auf die externe SSD
+3. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
+4. 05:15 Uhr: Plex Leere Ordner löschen (Plex-LXC) $\rightarrow$ Entfernt verwaiste Verzeichnisse.
+5. 05:30 Uhr: Plex Smart Cleanup (Plex-LXC) $\rightarrow$ Löscht gesehene YouTube-Videos nach einer Frist von 5 Tagen.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant HA as 🔹 Home Assistant (VM)
     participant PVE as 💻 Proxmox Host (pve)
+    participant PaperlessLXC as 🟢 Paperless LXC
     participant PlexLXC as 🟢 Plex LXC
     participant Influx as 🔸 InfluxDB (Docker)
+    participant SSD as 🟪 Externe SSD
     participant GDrive as ☁️ Google Drive
 
-    %% --- ABLAUF 1: PROXMOX BACKUP (04:00 UHR) ---
+    %% --- ABLAUF 1: PAPERLESS EXPORT & SYNC (02:00 UHR) ---
     rect rgb(39, 174, 96)
-        Note over PVE, GDrive: ABLAUF 1: Proxmox Rclone Backup (04:00 Uhr)
-        Note over PVE: Lokale System-Crontab<br>löst Backup aus
-        PVE->>GDrive: 1a. rclone sync von externer SSD
+        Note over PaperlessLXC, GDrive: ABLAUF 1: Paperless Backup & Cloud Sync (02:00 Uhr)
+        Note over PaperlessLXC: Crontab startet cron-monitor.sh
+        activate PaperlessLXC
+        PaperlessLXC->>PaperlessLXC: 1a. document_exporter schreibt Export nach /opt/paperless/export
+        PaperlessLXC->>GDrive: 1b. rclone sync nach gdrive:Paperless_Backup
+        PaperlessLXC->>Influx: 1c. cron-monitor.sh meldet duration & exit_code
+        deactivate PaperlessLXC
+    end
+
+    %% --- ABLAUF 2: PROXMOX VZDUMP BACKUP (03:00 UHR) ---
+    rect rgb(52, 73, 94)
+        Note over PVE, SSD: ABLAUF 2: Proxmox Node Backup (03:00 Uhr)
+        Note over PVE: Integrierter PVE-Backup-Job (vzdump)
         activate PVE
-        GDrive-->>PVE: 1b. Sync erfolgreich beendet
-        PVE->>Influx: 1c. cron-monitor.sh sendet duration & exit_code via curl
+        PVE->>SSD: 2a. Sichert alle VMs & LXCs als Dump-Dateien (/mnt/pve/ext-storage/dump)
         deactivate PVE
     end
 
-    %% --- ABLAUF 2: PLEX LEERE ORDNER LÖSCHEN (05:15 UHR) ---
+    %% --- ABLAUF 3: PROXMOX RCLONE CLOUD SYNC (04:00 UHR) ---
+    rect rgb(46, 204, 113)
+        Note over PVE, GDrive: ABLAUF 3: Proxmox Rclone Backup (04:00 Uhr)
+        Note over PVE: Lokale System-Crontab löst Backup aus
+        activate PVE
+        PVE->>GDrive: 3a. rclone sync von externer SSD nach GDrive
+        GDrive-->>PVE: 3b. Sync erfolgreich beendet
+        PVE->>Influx: 3c. cron-monitor.sh sendet duration & exit_code
+        deactivate PVE
+    end
+
+    %% --- ABLAUF 4: PLEX LEERE ORDNER LÖSCHEN (05:15 UHR) ---
     rect rgb(44, 62, 80)
-        Note over HA, PlexLXC: ABLAUF 2: Plex Leere Ordner löschen (05:15 Uhr)
-        HA->>PlexLXC: 2a. Trigger via SSH (HA Shell Command)
+        Note over HA, PlexLXC: ABLAUF 4: Plex Leere Ordner löschen (05:15 Uhr)
+        HA->>PlexLXC: 4a. Trigger via SSH (HA Shell Command)
         activate PlexLXC
         Note over PlexLXC: Skript räumt leere Verzeichnisse auf
-        PlexLXC->>Influx: 2b. cron-monitor.sh meldet Werte an InfluxDB
+        PlexLXC->>Influx: 4b. cron-monitor.sh meldet Werte an InfluxDB
         deactivate PlexLXC
     end
 
-    %% --- ABLAUF 3: PLEX SMART CLEANUP (05:30 UHR) ---
+    %% --- ABLAUF 5: PLEX SMART CLEANUP (05:30 UHR) ---
     rect rgb(142, 68, 173)
-        Note over HA, PlexLXC: ABLAUF 3: Plex Smart Cleanup (05:30 Uhr)
-        HA->>PlexLXC: 3a. Trigger via SSH: plex_cleaner.py
+        Note over HA, PlexLXC: ABLAUF 5: Plex Smart Cleanup (05:30 Uhr)
+        HA->>PlexLXC: 5a. Trigger via SSH: plex_cleaner.py
         activate PlexLXC
         Note over PlexLXC: Prüft 'lastViewedAt'<br>& löscht geschaute Videos (>5 Tage)
-        PlexLXC->>Influx: 3b. cron-monitor.sh meldet Werte an InfluxDB
-        PlexLXC->>HA: 3c. Python sendet Webhook an HA (Titel-Liste für iPhone)
+        PlexLXC->>Influx: 5b. cron-monitor.sh meldet Werte an InfluxDB
+        PlexLXC->>HA: 5c. Python sendet Webhook an HA (Titel-Liste für iPhone)
         deactivate PlexLXC
     end
 
@@ -98,8 +126,8 @@ sequenceDiagram
     rect rgb(41, 128, 185)
         Note over HA, Influx: KONTINUIERLICHE ÜBERWACHUNG (Dead-Man-Switch)
         loop Alle paar Minuten
-            HA->>Influx: 4a. Flux Query (Prüfe letzten Eintrag im Fenster -26h)
-            Influx-->>HA: 4b. Liefert Daten für ALLE 3 Jobs (Dauer & Status)
+            HA->>Influx: 6a. Flux Query (Prüfe letzten Eintrag im Fenster -26h)
+            Influx-->>HA: 6b. Liefert Daten für ALLE Jobs (Dauer & Status)
         end
     end
 ```
@@ -176,7 +204,7 @@ graph TB
     subgraph PVE_LEI ["💻 Proxmox Node (pve) [Lenovo ThinkCentre M720q Mini PC Pentium Gold 5400T 8GB RAM 256GB SSD]"]
         
         subgraph Storage_LEI ["💾 Speicher-Infrastruktur"]
-            HDD_LEI["🟪 Externe HDD (500GB)<br>Pfad: /mnt/pve/external-storage"]:::storageStyle
+            HDD_LEI["🟪 Externe HDD (500GB)<br>Pfad: /mnt/pve/external-storage/dump"]:::storageStyle
         end
 
         subgraph VMs_LEI ["🖥️ Virtuelle Maschinen (VMs)"]
@@ -196,13 +224,45 @@ graph TB
     GDrive_LEI["☁️ Google Drive (Remote)"]:::extStyle
     
     %% Datenpfade
-    HDD_LEI -->|rclone sync| GDrive_LEI
+    VMs_LEI -->|03:00 vzdump| HDD_LEI
+    LXCs_LEI -->|03:00 vzdump| HDD_LEI
+    HDD_LEI -->|04:00 rclone sync| GDrive_LEI
     
     class PVE_LEI pveNode;
 ```
 ## 🕓 2. Cronjobs
 
-1. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
+1. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Sichert alle VMs und LXC-Container als Backup-Dump auf die externe SSD
+2. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant PVE as 💻 Proxmox Host (pve)
+    participant HDD as 🟪 Externe HDD
+    participant GDrive as ☁️ Google Drive
+    participant Influx as 🔸 InfluxDB (Docker)
+
+    %% --- ABLAUF 1: PROXMOX VZDUMP BACKUP (03:00 UHR) ---
+    rect rgb(52, 73, 94)
+        Note over PVE, HDD: ABLAUF 1: Proxmox Node Backup (03:00 Uhr)
+        Note over PVE: Integrierter PVE-Backup-Job (vzdump)
+        activate PVE
+        PVE->>HDD: 1a. Sichert Home Assistant VM & Docker LXC als Dump-Dateien
+        deactivate PVE
+    end
+
+    %% --- ABLAUF 2: PROXMOX RCLONE CLOUD SYNC (04:00 UHR) ---
+    rect rgb(46, 204, 113)
+        Note over PVE, GDrive: ABLAUF 2: Proxmox Rclone Backup (04:00 Uhr)
+        Note over PVE: Lokale System-Crontab löst Backup aus
+        activate PVE
+        PVE->>GDrive: 2a. rclone sync von externer HDD nach Google Drive
+        GDrive-->>PVE: 2b. Sync erfolgreich beendet
+        PVE->>Influx: 2c. cron-monitor.sh sendet duration & exit_code via curl
+        deactivate PVE
+    end
+```
 
 ## 🏠 3. Home Assistant
 ```mermaid
