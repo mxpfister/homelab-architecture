@@ -56,8 +56,9 @@ graph TB
 1. 02:00 Uhr: Paperless Document Export & Cloud-Sync (Paperless-LXC) $\rightarrow$ Erstellt einen konsistenten Dokumenten-/Datenbankexport und synchronisiert ihn via Rclone zu Google Drive
 2. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Sichert alle VMs und LXC-Container als Backup-Dump auf die externe SSD
 3. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
-4. 05:15 Uhr: Plex Leere Ordner löschen (Plex-LXC) $\rightarrow$ Entfernt verwaiste Verzeichnisse.
-5. 05:30 Uhr: Plex Smart Cleanup (Plex-LXC) $\rightarrow$ Löscht gesehene YouTube-Videos nach einer Frist von 5 Tagen.
+4. 04:00 Uhr (Sonntags): yt-dlp Auto-Update (Plex-LXC) $\rightarrow$ Aktualisiert den yt-dlp auf die neueste Version.
+5. 05:15 Uhr: Plex Leere Ordner löschen (Plex-LXC, yt-worker) $\rightarrow$ Entfernt verwaiste Verzeichnisse.
+6. 05:30 Uhr: Plex Smart Cleanup (Plex-LXC, yt-worker) $\rightarrow$ Löscht gesehene YouTube-Videos nach einer Frist von 5 Tagen.
 
 ```mermaid
 sequenceDiagram
@@ -101,24 +102,33 @@ sequenceDiagram
         deactivate PVE
     end
 
-    %% --- ABLAUF 4: PLEX LEERE ORDNER LÖSCHEN (05:15 UHR) ---
-    rect rgb(44, 62, 80)
-        Note over HA, PlexLXC: ABLAUF 4: Plex Leere Ordner löschen (05:15 Uhr)
-        HA->>PlexLXC: 4a. Trigger via SSH (HA Shell Command)
+    %% --- ABLAUF 4: YT-DLP UPDATE (04:00 UHR, SONNTAGS) ---
+    rect rgb(230, 126, 34)
+        Note over PlexLXC: ABLAUF 4: yt-dlp Auto-Update (04:00 Uhr, Sonntags)
+        Note over PlexLXC: Lokale Crontab (root/yt-worker)
         activate PlexLXC
-        Note over PlexLXC: Skript räumt leere Verzeichnisse auf
-        PlexLXC->>Influx: 4b. cron-monitor.sh meldet Werte an InfluxDB
+        PlexLXC->>PlexLXC: 4a. yt-dlp -U
         deactivate PlexLXC
     end
 
-    %% --- ABLAUF 5: PLEX SMART CLEANUP (05:30 UHR) ---
-    rect rgb(142, 68, 173)
-        Note over HA, PlexLXC: ABLAUF 5: Plex Smart Cleanup (05:30 Uhr)
-        HA->>PlexLXC: 5a. Trigger via SSH: plex_cleaner.py
+    %% --- ABLAUF 5: PLEX LEERE ORDNER LÖSCHEN (05:15 UHR) ---
+    rect rgb(44, 62, 80)
+        Note over PlexLXC, Influx: ABLAUF 5: Plex Leere Ordner löschen (05:15 Uhr)
+        Note over PlexLXC: Lokale Crontab (Benutzer: yt-worker)
         activate PlexLXC
-        Note over PlexLXC: Prüft 'lastViewedAt'<br>& löscht geschaute Videos (>5 Tage)
+        PlexLXC->>PlexLXC: 5a. find-Skript räumt leere Verzeichnisse auf
         PlexLXC->>Influx: 5b. cron-monitor.sh meldet Werte an InfluxDB
-        PlexLXC->>HA: 5c. Python sendet Webhook an HA (Titel-Liste für iPhone)
+        deactivate PlexLXC
+    end
+
+    %% --- ABLAUF 6: PLEX SMART CLEANUP (05:30 UHR) ---
+    rect rgb(142, 68, 173)
+        Note over PlexLXC, HA: ABLAUF 6: Plex Smart Cleanup (05:30 Uhr)
+        Note over PlexLXC: Lokale Crontab (Benutzer: yt-worker)
+        activate PlexLXC
+        PlexLXC->>PlexLXC: 6a. plex_cleaner.py löscht geschaute Videos (>5 Tage)
+        PlexLXC->>Influx: 6b. cron-monitor.sh meldet Werte an InfluxDB
+        PlexLXC->>HA: 6c. Python sendet Webhook an HA (Titel-Liste für iPhone)
         deactivate PlexLXC
     end
 
@@ -126,13 +136,13 @@ sequenceDiagram
     rect rgb(41, 128, 185)
         Note over HA, Influx: KONTINUIERLICHE ÜBERWACHUNG (Dead-Man-Switch)
         loop Alle paar Minuten
-            HA->>Influx: 6a. Flux Query (Prüfe letzten Eintrag im Fenster -26h)
-            Influx-->>HA: 6b. Liefert Daten für ALLE Jobs (Dauer & Status)
+            HA->>Influx: 7a. Flux Query (Prüfe letzten Eintrag im Fenster -26h)
+            Influx-->>HA: 7b. Liefert Daten für ALLE Jobs (Dauer & Status)
         end
     end
 ```
 
-⚠️ Wichtiger Hinweis zum Linux-Pipe-Buffer: > Bei Aufrufen über die Home Assistant SSH-Schnittstelle müssen textintensive Skripte zwingend mittels > /dev/null 2>&1 umgeleitet werden. Andernfalls läuft der 64 KB große OS-Pipe-Buffer voll, was zu einem Deadlock (Einfrieren) des Skripts führt.
+⚠️ Wichtiger Hinweis zum Linux-Pipe-Buffer: Bei Aufrufen über die Home Assistant SSH-Schnittstelle müssen textintensive Skripte zwingend mittels > /dev/null 2>&1 umgeleitet werden. Andernfalls läuft der 64 KB große OS-Pipe-Buffer voll, was zu einem Deadlock (Einfrieren) des Skripts führt.
 
 ## 🏠 3. Home Assistant
 ```mermaid
