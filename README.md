@@ -224,6 +224,7 @@ graph TB
         subgraph LXCs_LEI ["📦 LXC Container"]
             subgraph DockerLXC_LEI ["🐋 Docker-Host (LXC)"]
                 Portainer_LEI["🔸 Portainer"]:::dockerStyle
+                Influx_LEI_LEI["🔸 Portainer"]:::dockerStyle
                 Uptime_LEI["🔸 Uptime Kuma"]:::dockerStyle
             end
             class DockerLXC_LEI lxcStyle;
