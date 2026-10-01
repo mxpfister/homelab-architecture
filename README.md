@@ -54,7 +54,10 @@ graph TB
 ## 🕓 2. Cronjobs
 
 1. 02:00 Uhr: Paperless Document Export & Cloud-Sync (Paperless-LXC) $\rightarrow$ Erstellt einen konsistenten Dokumenten-/Datenbankexport und synchronisiert ihn via Rclone zu Google Drive
-2. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Sichert alle VMs und LXC-Container als Backup-Dump auf die externe SSD
+2. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Inkrementelle Backup-Strategie (Lastverteilung & schnelle Cloud-Uploads):
+   - **Täglich:** Kritische Systeme (Docker-Host) $\rightarrow$ Keep: 5
+   - **Mi/So:** Halb-kritische Systeme (Pi-hole, Plex) $\rightarrow$ Keep: 4
+   - **Montags:** Systeme mit eigenen Daten-Backups (HA, Paperless) $\rightarrow$ Keep: 3
 3. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
 4. 04:00 Uhr (Sonntags): yt-dlp Auto-Update (Plex-LXC) $\rightarrow$ Aktualisiert den yt-dlp auf die neueste Version.
 5. 05:15 Uhr: Plex Leere Ordner löschen (Plex-LXC, yt-worker) $\rightarrow$ Entfernt verwaiste Verzeichnisse.
@@ -85,9 +88,9 @@ sequenceDiagram
     %% --- ABLAUF 2: PROXMOX VZDUMP BACKUP (03:00 UHR) ---
     rect rgb(52, 73, 94)
         Note over PVE, SSD: ABLAUF 2: Proxmox Node Backup (03:00 Uhr)
-        Note over PVE: Integrierter PVE-Backup-Job (vzdump)
+        Note over PVE: Gestaffelter PVE-Backup-Job (vzdump)
         activate PVE
-        PVE->>SSD: 2a. Sichert alle VMs & LXCs als Dump-Dateien (/mnt/pve/ext-storage/dump)
+        PVE->>SSD: 2a. Sichert VMs/LXCs nach Zeitplan als Dump-Dateien (/mnt/pve/ext-storage/dump)
         deactivate PVE
     end
 
@@ -243,7 +246,9 @@ graph TB
 ```
 ## 🕓 2. Cronjobs
 
-1. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Sichert alle VMs und LXC-Container als Backup-Dump auf die externe SSD
+1. 03:00 Uhr: Proxmox VZDump Backup (pve-Node) $\rightarrow$ Inkrementelle Backup-Strategie (Lastverteilung & schnelle Cloud-Uploads):
+   - **Täglich:** Kritische Systeme (Docker-Host) $\rightarrow$ Keep: 5
+   - **Montags:** Systeme mit eigenen Daten-Backups (HA) $\rightarrow$ Keep: 3
 2. 04:00 Uhr: Proxmox Rclone Backup (pve-Node) $\rightarrow$ Synchronisiert lokale Dumps zu Google Drive.
 
 ```mermaid
@@ -257,9 +262,9 @@ sequenceDiagram
     %% --- ABLAUF 1: PROXMOX VZDUMP BACKUP (03:00 UHR) ---
     rect rgb(52, 73, 94)
         Note over PVE, HDD: ABLAUF 1: Proxmox Node Backup (03:00 Uhr)
-        Note over PVE: Integrierter PVE-Backup-Job (vzdump)
+        Note over PVE: Gestaffelter PVE-Backup-Job (vzdump)
         activate PVE
-        PVE->>HDD: 1a. Sichert Home Assistant VM & Docker LXC als Dump-Dateien
+        PVE->>HDD: 1a. Sichert VMs/LXCs nach Zeitplan als Dump-Dateien
         deactivate PVE
     end
 
