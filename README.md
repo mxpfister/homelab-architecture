@@ -313,13 +313,15 @@ sequenceDiagram
         end
 
         subgraph IoT ["📻 IoT Gateways & Dongles"]
-            SkyConnect["📡 HA SkyConnect<br>(OpenThread Border Router)"]:::hw
+            ZigbeeCoordinator["📡 Sonoff ZigBee Coordinator<br>(Zigbee 3.0, ZHA Integration)"]:::hw
+            SkyConnect["📡 HA SkyConnect<br>(Matter / Thread)"]:::hw
             TP_Link["🔌 TP-Link Kasa<br>(WLAN Steckdosen)"]:::hw
             Tuya["☁️ Tuya Integration"]:::hw
         end
 
         subgraph LocalNet ["🖥️ Lokale Dienste & Geräte (LAN)"]
-            Fritz["📡 FRITZ!Box 7490<br>(Netzwerk & Internet)"]:::net
+            FritzMain["📡 FRITZ!Box 5690<br>(Glasfaser, Netzwerk & Internet)"]:::net
+            FritzMesh["📶 FRITZ!Box 7490<br>(Mesh-Repeater)"]:::net
             PVE["💻 Proxmox VE Node"]:::net
             PS5["🎮 PlayStation 5<br>(Network Integration)"]:::net
         end
@@ -333,7 +335,8 @@ sequenceDiagram
         %% Verbindungen
         HA --- Floors
         
-        SkyConnect <-->|Thread / Zigbee| HA
+        ZigbeeCoordinator <-->|Zigbee / ZHA| HA
+        SkyConnect <-->|Matter / Thread| HA
         TP_Link <-->|WLAN| HA
         Tuya <-->|Cloud API| HA
         
