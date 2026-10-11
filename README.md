@@ -314,6 +314,7 @@ sequenceDiagram
 
         subgraph IoT ["📻 IoT Gateways & Dongles"]
             ZigbeeCoordinator["📡 ZigBee Coordinator<br>(ZHA Integration)"]:::hw
+            SkyConnect["📡 HA SkyConnect<br>(Matter / Thread)"]:::hw
             TP_Link["🔌 TP-Link Kasa<br>(WLAN Steckdosen)"]:::hw
             Tuya["☁️ Tuya Integration"]:::hw
         end
@@ -335,6 +336,7 @@ sequenceDiagram
         HA --- Floors
         
         ZigbeeCoordinator <-->|Zigbee / ZHA| HA
+        SkyConnect <-->|Matter / Thread| HA
         TP_Link <-->|WLAN| HA
         Tuya <-->|Cloud API| HA
         
