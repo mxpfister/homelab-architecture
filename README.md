@@ -313,7 +313,7 @@ sequenceDiagram
         end
 
         subgraph IoT ["📻 IoT Gateways & Dongles"]
-            ZigbeeCoordinator["📡 ZigBee Coordinator<br>(ZHA Integration)"]:::hw
+            ZigbeeCoordinator["📡 Sonoff ZigBee Coordinator<br>(Zigbee 3.0, ZHA Integration)"]:::hw
             SkyConnect["📡 HA SkyConnect<br>(Matter / Thread)"]:::hw
             TP_Link["🔌 TP-Link Kasa<br>(WLAN Steckdosen)"]:::hw
             Tuya["☁️ Tuya Integration"]:::hw
